@@ -1,5 +1,5 @@
 use crate::depth_update::DepthUpdate;
-use futures_util::StreamExt;
+use futures_util::{StreamExt, TryStreamExt};
 use tokio_tungstenite::connect_async;
 mod depth_update;
 
@@ -9,12 +9,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await
         .expect("Failed to connect");
 
-    let (_, mut read) = ws.split();
+    let (_, read) = ws.split();
 
-    while let Some(message) = read.next().await {
-        let update: DepthUpdate = serde_json::from_str(message?.to_text()?)?;
-        println!("{:?}", update)
-    }
+    read.map(|message| -> anyhow::Result<DepthUpdate> {
+        Ok(serde_json::from_str(message?.to_text()?)?)
+    })
+    .try_for_each(|update| async move {
+        println!("{update:?}");
+        Ok(())
+    })
+    .await?;
 
     Ok(())
 }
