@@ -19,6 +19,7 @@ depth deltas: wss://fstream.binance.com/public/ws/btcusdt@depth@100ms
     1. get snapshot
     1. build orderbook from snapshot
     1. apply buffered depth updates, apply subsequent updates to orderbook
+- [ ] auto reconnect
 
 
 - visualize orderbook with ratatui
