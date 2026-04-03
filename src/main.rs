@@ -1,5 +1,7 @@
+use crate::depth_update::DepthUpdate;
 use futures_util::StreamExt;
 use tokio_tungstenite::connect_async;
+mod depth_update;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -10,7 +12,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (_, mut read) = ws.split();
 
     while let Some(message) = read.next().await {
-        println!("{}", message?.to_text()?)
+        let update: DepthUpdate = serde_json::from_str(message?.to_text()?)?;
+        println!("{:?}", update)
     }
 
     Ok(())
