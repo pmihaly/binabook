@@ -1,0 +1,32 @@
+use serde::{Deserialize, Deserializer, Serialize};
+
+fn from_str_to_f32<'de, D>(deserializer: D) -> Result<f32, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s: &str = Deserialize::deserialize(deserializer)?;
+    s.parse::<f32>().map_err(serde::de::Error::custom)
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Symbol(String);
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, PartialOrd, Clone, Copy)]
+pub struct Price(#[serde(deserialize_with = "from_str_to_f32")] f32);
+
+impl Eq for Price {}
+
+impl Ord for Price {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.0.total_cmp(&other.0)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+pub struct Quantity(#[serde(deserialize_with = "from_str_to_f32")] f32);
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PriceLevel {
+    pub price: Price,
+    pub quantity: Quantity,
+}

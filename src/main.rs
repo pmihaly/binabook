@@ -1,7 +1,8 @@
-use crate::{depth_update::DepthUpdate, snapshot::Snapshot};
+use crate::{depth_update::DepthUpdate, orderbook::Orderbook, snapshot::Snapshot};
 use futures_util::{StreamExt, TryStreamExt};
 use tokio_tungstenite::connect_async;
 mod depth_update;
+mod orderbook;
 mod snapshot;
 mod types;
 
@@ -12,7 +13,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .await?
             .json()
             .await?;
-    println!("{body:?}");
+    let book = Orderbook::from(body);
+    println!("{book:?}");
 
     let (ws, _) = connect_async("wss://fstream.binance.com/public/ws/btcusdt@depth@100ms")
         .await
