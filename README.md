@@ -8,10 +8,10 @@ depth deltas: wss://fstream.binance.com/public/ws/btcusdt@depth@100ms
 
 - [x] establish ws to bina
 - [x] parse depth update
-- [ ] get and parse snapshot
+- [x] get and parse snapshot
 - [ ] internal orderbook datastructure
-- [ ] map snapshot into internal orderbook
 - [ ] print top n level
+- [ ] map snapshot into internal orderbook
 - [ ] apply a single depth update to internal orderbook
 - [ ] assemble main program:
     1. sub to depth stream

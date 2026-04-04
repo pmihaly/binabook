@@ -1,10 +1,19 @@
-use crate::depth_update::DepthUpdate;
+use crate::{depth_update::DepthUpdate, snapshot::Snapshot};
 use futures_util::{StreamExt, TryStreamExt};
 use tokio_tungstenite::connect_async;
 mod depth_update;
+mod snapshot;
+mod types;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let body: Snapshot =
+        reqwest::get("https://fapi.binance.com/fapi/v1/depth?symbol=BTCUSDT&limit=1000")
+            .await?
+            .json()
+            .await?;
+    println!("{body:?}");
+
     let (ws, _) = connect_async("wss://fstream.binance.com/public/ws/btcusdt@depth@100ms")
         .await
         .expect("Failed to connect");
