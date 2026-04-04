@@ -10,9 +10,9 @@ depth deltas: wss://fstream.binance.com/public/ws/btcusdt@depth@100ms
 - [x] parse depth update
 - [x] get and parse snapshot
 - [x] internal orderbook datastructure
-- [ ] print top n level
+- [x] print top n level
 - [x] map snapshot into internal orderbook
-- [ ] apply a single depth update to internal orderbook
+- [x] apply a single depth update to internal orderbook
 - [ ] assemble main program:
     1. sub to depth stream
     1. buffer depth updates
@@ -21,6 +21,7 @@ depth deltas: wss://fstream.binance.com/public/ws/btcusdt@depth@100ms
     1. apply buffered depth updates, apply subsequent updates to orderbook
 - [ ] auto reconnect
 
+# Extra todos
 
 - visualize orderbook with ratatui
 - get funding rates and funding rate countdown

@@ -4,11 +4,11 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DepthUpdate {
     #[serde(rename(deserialize = "s"))]
-    symbol: Symbol,
+    pub symbol: Symbol,
 
     #[serde(rename(deserialize = "b"))]
-    bids: Vec<PriceLevel>,
+    pub bids: Vec<PriceLevel>,
 
     #[serde(rename(deserialize = "a"))]
-    asks: Vec<PriceLevel>,
+    pub asks: Vec<PriceLevel>,
 }

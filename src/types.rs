@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use serde::{Deserialize, Deserializer, Serialize};
 
 fn from_str_to_f32<'de, D>(deserializer: D) -> Result<f32, D::Error>
@@ -14,6 +16,12 @@ pub struct Symbol(String);
 #[derive(Serialize, Deserialize, Debug, PartialEq, PartialOrd, Clone, Copy)]
 pub struct Price(#[serde(deserialize_with = "from_str_to_f32")] f32);
 
+impl Display for Price {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 impl Eq for Price {}
 
 impl Ord for Price {
@@ -22,8 +30,16 @@ impl Ord for Price {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy, Default)]
 pub struct Quantity(#[serde(deserialize_with = "from_str_to_f32")] f32);
+
+impl Eq for Quantity {}
+
+impl Display for Quantity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PriceLevel {
