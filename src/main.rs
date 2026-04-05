@@ -22,6 +22,7 @@ async fn create_orderbook(snapshot_url: &str) -> anyhow::Result<Orderbook> {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let book: Arc<Mutex<Option<Orderbook>>> = Arc::new(Mutex::new(None));
+    let update_buffer: Arc<Mutex<Vec<DepthUpdate>>> = Arc::new(Mutex::new(Vec::new()));
 
     let (ws, _) = connect_async(DEPTH_URL).await.expect("Failed to connect");
 
@@ -29,10 +30,19 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     tokio::spawn({
         let shared_book = Arc::clone(&book);
+        let shared_buffer = Arc::clone(&update_buffer);
         async move {
-            let book_from_snapshot = create_orderbook(SNAPSHOT_URL).await?;
+            let mut book_from_snapshot = create_orderbook(SNAPSHOT_URL).await?;
+
+            let buffer = std::mem::take(&mut *shared_buffer.lock().await);
+
+            for update in buffer {
+                book_from_snapshot.apply_depth_update(update);
+            }
+
             let mut book = shared_book.lock().await;
             *book = Some(book_from_snapshot);
+
             anyhow::Ok(())
         }
     });
@@ -42,10 +52,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
         let text = msg.to_text()?;
         let depth_update = serde_json::from_str::<DepthUpdate>(&text.to_string())?;
 
-        let mut guard = book.lock().await;
+        let mut book = book.lock().await;
 
-        match &mut *guard {
-            None => todo!("delta buffering not implemented"),
+        match &mut *book {
+            None => {
+                let mut buffer = update_buffer.lock().await;
+                buffer.push(depth_update);
+            }
             Some(book) => {
                 book.apply_depth_update(depth_update);
                 println!("{}", book.display_top_levels(10));
