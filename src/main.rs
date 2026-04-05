@@ -1,44 +1,57 @@
 use std::sync::Arc;
 
 use crate::{depth_update::DepthUpdate, orderbook::Orderbook, snapshot::Snapshot};
-use futures_util::{StreamExt, TryStreamExt};
+use futures_util::StreamExt;
 use tokio::sync::Mutex;
 use tokio_tungstenite::connect_async;
 mod depth_update;
 mod orderbook;
 mod snapshot;
 mod types;
+use std::error::Error;
+
+const SNAPSHOT_URL: &str = "https://fapi.binance.com/fapi/v1/depth?symbol=BTCUSDT&limit=1000";
+const DEPTH_URL: &str = "wss://fstream.binance.com/public/ws/btcusdt@depth@100ms";
+
+async fn create_orderbook(snapshot_url: &str) -> anyhow::Result<Orderbook> {
+    let snapshot = reqwest::get(snapshot_url).await?.json::<Snapshot>().await?;
+
+    Ok(Orderbook::from(snapshot))
+}
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let body: Snapshot =
-        reqwest::get("https://fapi.binance.com/fapi/v1/depth?symbol=BTCUSDT&limit=1000")
-            .await?
-            .json()
-            .await?;
-    let book = Arc::new(Mutex::new(Orderbook::from(body)));
+async fn main() -> Result<(), Box<dyn Error>> {
+    let book: Arc<Mutex<Option<Orderbook>>> = Arc::new(Mutex::new(None));
 
-    let (ws, _) = connect_async("wss://fstream.binance.com/public/ws/btcusdt@depth@100ms")
-        .await
-        .expect("Failed to connect");
+    let (ws, _) = connect_async(DEPTH_URL).await.expect("Failed to connect");
 
-    let (_, read) = ws.split();
+    let (_, mut read) = ws.split();
 
-    read.map(|message| -> anyhow::Result<DepthUpdate> {
-        Ok(serde_json::from_str(message?.to_text()?)?)
-    })
-    .try_for_each(|update| {
+    tokio::spawn({
         let shared_book = Arc::clone(&book);
         async move {
-            let mut guard = shared_book.lock().await;
-            guard.apply_depth_update(update);
-
-            println!("{}", guard.display_top_levels(10));
-
-            Ok(())
+            let book_from_snapshot = create_orderbook(SNAPSHOT_URL).await?;
+            let mut book = shared_book.lock().await;
+            *book = Some(book_from_snapshot);
+            anyhow::Ok(())
         }
-    })
-    .await?;
+    });
+
+    while let Some(message) = read.next().await {
+        let msg = message?;
+        let text = msg.to_text()?;
+        let depth_update = serde_json::from_str::<DepthUpdate>(&text.to_string())?;
+
+        let mut guard = book.lock().await;
+
+        match &mut *guard {
+            None => todo!("delta buffering not implemented"),
+            Some(book) => {
+                book.apply_depth_update(depth_update);
+                println!("{}", book.display_top_levels(10));
+            }
+        }
+    }
 
     Ok(())
 }
