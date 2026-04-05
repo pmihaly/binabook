@@ -67,7 +67,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             }
             Some(book) => {
                 book.apply_depth_update(depth_update);
-                println!("{}", book.display_top_levels(10));
+                println!("{}", book.display_top_levels(20));
             }
         }
     }
