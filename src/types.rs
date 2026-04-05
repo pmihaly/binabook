@@ -41,6 +41,9 @@ impl Display for Quantity {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, Default, PartialEq, PartialOrd, Eq, Ord, Clone, Copy)]
+pub struct UpdateID(i64);
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PriceLevel {
     pub price: Price,

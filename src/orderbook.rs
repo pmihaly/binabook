@@ -3,17 +3,32 @@ use std::{cmp::Reverse, collections::BTreeMap};
 use crate::{
     depth_update::DepthUpdate,
     snapshot::Snapshot,
-    types::{Price, Quantity},
+    types::{Price, Quantity, UpdateID},
 };
 
 #[derive(Debug, Default)]
 pub struct Orderbook {
+    prev_update_id: UpdateID,
     bids: BTreeMap<Reverse<Price>, Quantity>,
     asks: BTreeMap<Price, Quantity>,
 }
 
 impl Orderbook {
     pub fn apply_depth_update(&mut self, depth_update: DepthUpdate) {
+        let is_stale_update = depth_update.final_update_id <= self.prev_update_id;
+        if is_stale_update {
+            self.prev_update_id = depth_update.final_update_id;
+            return;
+        }
+
+        let has_missed_an_update = depth_update.prev_final_update_id != self.prev_update_id;
+
+        if has_missed_an_update {
+            panic!("missed a depth update, refetching snapshot is not implemented")
+        }
+
+        self.prev_update_id = depth_update.final_update_id;
+
         depth_update.bids.iter().for_each(|bid| {
             if bid.quantity == Quantity::default() {
                 self.bids.remove_entry(&Reverse(bid.price));
@@ -65,6 +80,10 @@ impl From<Snapshot> for Orderbook {
                 .map(|price_level| (price_level.price, price_level.quantity)),
         );
 
-        Self { bids, asks }
+        Self {
+            bids,
+            asks,
+            prev_update_id: value.last_update_id,
+        }
     }
 }

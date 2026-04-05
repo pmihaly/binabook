@@ -19,10 +19,14 @@ depth deltas: wss://fstream.binance.com/public/ws/btcusdt@depth@100ms
     1. get snapshot
     1. build orderbook from snapshot
     1. apply buffered depth updates, apply subsequent updates to orderbook
+- [x] check sequencing (ignore stale updates, error on missed updates)
 - [ ] fix parse error
 - [ ] auto reconnect
+- [ ] implement refetching snapshot on missed event
+- [ ] lockless orderbook (funnel depth update and snapshot into same channel (flume crate))
 
 # Extra todos
 
+- multiple markets at the same time
 - visualize orderbook with ratatui
 - get funding rates and funding rate countdown
