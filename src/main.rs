@@ -50,7 +50,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
     while let Some(message) = read.next().await {
         let msg = message?;
         let text = msg.to_text()?;
-        let depth_update = serde_json::from_str::<DepthUpdate>(&text.to_string())?;
+        let depth_update = match serde_json::from_str::<DepthUpdate>(&text.to_string()) {
+            Err(err) => {
+                println!("message dropped: {}, msg: {}", err, msg);
+                continue;
+            }
+            Ok(update) => update,
+        };
 
         let mut book = book.lock().await;
 
