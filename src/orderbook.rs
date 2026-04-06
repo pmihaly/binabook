@@ -14,26 +14,26 @@ pub enum OrderbookEvent {
 
 #[derive(Debug, Default)]
 pub struct Orderbook {
-    prev_update_id: UpdateID,
+    update_id: UpdateID,
     bids: BTreeMap<Reverse<Price>, Quantity>,
     asks: BTreeMap<Price, Quantity>,
 }
 
 impl Orderbook {
     pub fn apply_depth_update(&mut self, depth_update: DepthUpdate) {
-        let is_stale_update = depth_update.final_update_id <= self.prev_update_id;
+        let is_stale_update = depth_update.final_update_id <= self.update_id;
         if is_stale_update {
-            self.prev_update_id = depth_update.final_update_id;
+            self.update_id = depth_update.final_update_id;
             return;
         }
 
-        let has_missed_an_update = depth_update.prev_final_update_id != self.prev_update_id;
+        let has_missed_an_update = depth_update.prev_final_update_id != self.update_id;
 
         if has_missed_an_update {
             panic!("missed a depth update, refetching snapshot is not implemented")
         }
 
-        self.prev_update_id = depth_update.final_update_id;
+        self.update_id = depth_update.final_update_id;
 
         depth_update.bids.iter().for_each(|bid| {
             if bid.quantity == Quantity::default() {
@@ -89,7 +89,7 @@ impl From<Snapshot> for Orderbook {
         Self {
             bids,
             asks,
-            prev_update_id: value.last_update_id,
+            update_id: value.update_id,
         }
     }
 }
