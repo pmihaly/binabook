@@ -23,7 +23,7 @@ depth deltas: wss://fstream.binance.com/public/ws/btcusdt@depth@100ms
 - [x] fix parse error
 - [ ] auto reconnect
 - [ ] implement refetching snapshot on missed event
-- [ ] lockless orderbook (funnel depth update and snapshot into same channel (flume crate))
+- [x] "lockless" orderbook (funnel depth update and snapshot into same channel)
 
 # Extra todos
 

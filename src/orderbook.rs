@@ -6,6 +6,12 @@ use crate::{
     types::{Price, Quantity, UpdateID},
 };
 
+#[derive(Debug)]
+pub enum OrderbookEvent {
+    SnapshotUpdate(Snapshot),
+    DepthUpdate(DepthUpdate),
+}
+
 #[derive(Debug, Default)]
 pub struct Orderbook {
     prev_update_id: UpdateID,
