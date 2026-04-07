@@ -1,81 +1,113 @@
-use crate::{
-    depth_update::DepthUpdate,
-    orderbook::{Orderbook, OrderbookEvent},
-    snapshot::Snapshot,
-};
-use futures_util::StreamExt;
-use tokio_tungstenite::connect_async;
+use std::time::Instant;
+
+use rand::RngExt;
+
+use crate::depth_update::DepthUpdate;
+use crate::orderbook::Orderbook;
+use crate::types::{Price, PriceLevel, Quantity, Symbol, UpdateID};
+
 mod depth_update;
 mod orderbook;
 mod snapshot;
 mod types;
-use std::error::Error;
 
-const SNAPSHOT_URL: &str = "https://fapi.binance.com/fapi/v1/depth?symbol=BTCUSDT&limit=1000";
-const DEPTH_URL: &str = "wss://fstream.binance.com/public/ws/btcusdt@depth@100ms";
+const N_UPDATES: usize = 1_000_000;
+const RUNS: usize = 5;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
-    let (ws, _) = connect_async(DEPTH_URL).await.expect("Failed to connect");
+fn random_depth_update(prev_final_update_id: UpdateID, symbol: &Symbol) -> DepthUpdate {
+    let mut rng = rand::rng();
 
-    let (_, mut read) = ws.split();
+    let prev = prev_final_update_id.0;
+    let first = prev + 1;
+    let final_id = first + rng.random_range(0..3);
 
-    let (tx, mut rx) = tokio::sync::mpsc::channel::<OrderbookEvent>(100);
+    let mid_price: f32 = rng.random_range(20_000.0..70_000.0);
 
-    tokio::spawn({
-        let tx_thread = tx.clone();
-        async move {
-            let snapshot = reqwest::get(SNAPSHOT_URL).await?.json::<Snapshot>().await?;
+    let bid_levels = rng.random_range(1..5);
+    let ask_levels = rng.random_range(1..5);
 
-            tx_thread
-                .send(OrderbookEvent::SnapshotUpdate(snapshot))
-                .await?;
+    let mut bids = Vec::with_capacity(bid_levels);
+    let mut asks = Vec::with_capacity(ask_levels);
 
-            Ok::<(), anyhow::Error>(())
-        }
-    });
+    for i in 0..bid_levels {
+        let price = mid_price - (i as f32 + 1.0) * rng.random_range(0.1..5.0);
+        let qty = if rng.random_bool(0.1) {
+            0.0
+        } else {
+            rng.random_range(0.001..5.0)
+        };
 
-    tokio::spawn({
-        let tx_thread = tx.clone();
-        async move {
-            while let Some(message) = read.next().await {
-                let msg = message?;
-                let text = msg.to_text()?;
-                let depth_update = match serde_json::from_str::<DepthUpdate>(&text.to_string()) {
-                    Err(err) => {
-                        println!("message dropped: {}, msg: {}", err, msg);
-                        continue;
-                    }
-                    Ok(update) => update,
-                };
-
-                tx_thread
-                    .send(OrderbookEvent::DepthUpdate(depth_update))
-                    .await?;
-            }
-
-            Ok::<(), anyhow::Error>(())
-        }
-    });
-
-    let mut orderbook: Option<Orderbook> = None;
-    let mut update_buffer: Vec<DepthUpdate> = Vec::new();
-    while let Some(event) = rx.recv().await {
-        match (&mut orderbook, event) {
-            (_, OrderbookEvent::SnapshotUpdate(snapshot)) => {
-                let mut book = Orderbook::from(snapshot);
-                for buffered in update_buffer.drain(..) {
-                    book.apply_depth_update(buffered);
-                }
-                orderbook = Some(book);
-            }
-            (None, OrderbookEvent::DepthUpdate(update)) => update_buffer.push(update),
-            (Some(book), OrderbookEvent::DepthUpdate(update)) => {
-                book.apply_depth_update(update);
-                println!("{}", book.display_top_levels(20));
-            }
-        }
+        bids.push(PriceLevel {
+            price: Price(price),
+            quantity: Quantity(qty),
+        });
     }
 
-    Ok(())
+    for i in 0..ask_levels {
+        let price = mid_price + (i as f32 + 1.0) * rng.random_range(0.1..5.0);
+        let qty = if rng.random_bool(0.1) {
+            0.0
+        } else {
+            rng.random_range(0.001..5.0)
+        };
+
+        asks.push(PriceLevel {
+            price: Price(price),
+            quantity: Quantity(qty),
+        });
+    }
+
+    DepthUpdate {
+        first_update_id: UpdateID(first),
+        final_update_id: UpdateID(final_id),
+        prev_final_update_id,
+        symbol: Symbol(symbol.0.clone()),
+        bids,
+        asks,
+    }
+}
+
+fn main() {
+    println!("generating {N_UPDATES} random updates...");
+
+    let symbol = Symbol("BTCUSDT".to_string());
+    let mut last_id = UpdateID(1);
+
+    let mut updates = Vec::with_capacity(N_UPDATES);
+
+    for _ in 0..N_UPDATES {
+        let update = random_depth_update(last_id, &symbol);
+        last_id = update.final_update_id;
+        updates.push(update);
+    }
+
+    println!("updates generated\n");
+
+    let mut results = Vec::with_capacity(RUNS);
+
+    for run in 0..RUNS {
+        let mut orderbook = Orderbook::default();
+
+        let start = Instant::now();
+
+        for update in &updates {
+            orderbook.apply_depth_update(update);
+        }
+
+        let elapsed = start.elapsed().as_secs_f64();
+        let throughput = N_UPDATES as f64 / elapsed;
+
+        println!(
+            "run {}: {:.3}s | {:.0} updates/sec",
+            run + 1,
+            elapsed,
+            throughput
+        );
+
+        results.push(throughput);
+    }
+
+    let avg = results.iter().sum::<f64>() / RUNS as f64;
+
+    println!("\naverage throughput: {:.0} updates/sec", avg);
 }

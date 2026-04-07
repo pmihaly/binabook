@@ -11,10 +11,10 @@ where
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Symbol(String);
+pub struct Symbol(pub String);
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, PartialOrd, Clone, Copy)]
-pub struct Price(#[serde(deserialize_with = "from_str_to_f32")] f32);
+pub struct Price(#[serde(deserialize_with = "from_str_to_f32")] pub f32);
 
 impl Display for Price {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -31,7 +31,7 @@ impl Ord for Price {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy, Default)]
-pub struct Quantity(#[serde(deserialize_with = "from_str_to_f32")] f32);
+pub struct Quantity(#[serde(deserialize_with = "from_str_to_f32")] pub f32);
 
 impl Eq for Quantity {}
 
@@ -42,7 +42,7 @@ impl Display for Quantity {
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, PartialOrd, Eq, Ord, Clone, Copy)]
-pub struct UpdateID(i64);
+pub struct UpdateID(pub i64);
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PriceLevel {

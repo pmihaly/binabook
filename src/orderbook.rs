@@ -20,18 +20,18 @@ pub struct Orderbook {
 }
 
 impl Orderbook {
-    pub fn apply_depth_update(&mut self, depth_update: DepthUpdate) {
+    pub fn apply_depth_update(&mut self, depth_update: &DepthUpdate) {
         let is_stale_update = depth_update.final_update_id <= self.update_id;
         if is_stale_update {
             self.update_id = depth_update.final_update_id;
             return;
         }
 
-        let has_missed_an_update = depth_update.prev_final_update_id != self.update_id;
-
-        if has_missed_an_update {
-            panic!("missed a depth update, refetching snapshot is not implemented")
-        }
+        // let has_missed_an_update = depth_update.prev_final_update_id != self.update_id;
+        //
+        // if has_missed_an_update {
+        //     panic!("missed a depth update, refetching snapshot is not implemented")
+        // }
 
         self.update_id = depth_update.final_update_id;
 

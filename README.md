@@ -22,8 +22,12 @@ depth deltas: wss://fstream.binance.com/public/ws/btcusdt@depth@100ms
 - [x] check sequencing (ignore stale updates, error on missed updates)
 - [x] fix parse error
 - [ ] auto reconnect
-- [ ] implement refetching snapshot on missed event
+- [ ] implement refetching from snapshot on missed event
 - [x] "lockless" orderbook (funnel depth update and snapshot into same channel)
+
+# Known issues/out of scope
+
+- prints out the top of the book on every depth update, even if we can't see it (bottom prices changed)
 
 # Extra todos
 
