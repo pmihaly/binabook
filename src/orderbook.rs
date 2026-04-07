@@ -12,84 +12,109 @@ pub enum OrderbookEvent {
     DepthUpdate(DepthUpdate),
 }
 
+type PriceTicks = u32;
+
+fn price_to_index(price: PriceTicks) -> usize {
+    price as usize
+}
+
 #[derive(Debug, Default)]
 pub struct Orderbook {
     update_id: UpdateID,
-    bids: BTreeMap<Reverse<Price>, Quantity>,
-    asks: BTreeMap<Price, Quantity>,
+    bids: Vec<Quantity>,
+    best_bid: usize,
+    asks: Vec<Quantity>,
+    best_ask: usize,
 }
 
 impl Orderbook {
     pub fn apply_depth_update(&mut self, depth_update: &DepthUpdate) {
-        let is_stale_update = depth_update.final_update_id <= self.update_id;
-        if is_stale_update {
-            self.update_id = depth_update.final_update_id;
+        if depth_update.final_update_id <= self.update_id {
             return;
         }
 
-        // let has_missed_an_update = depth_update.prev_final_update_id != self.update_id;
-        //
-        // if has_missed_an_update {
-        //     panic!("missed a depth update, refetching snapshot is not implemented")
-        // }
-
         self.update_id = depth_update.final_update_id;
 
-        depth_update.bids.iter().for_each(|bid| {
-            if bid.quantity == Quantity::default() {
-                self.bids.remove_entry(&Reverse(bid.price));
-                return;
+        let zero = Quantity::default();
+
+        // BIDS
+        for bid in &depth_update.bids {
+            let idx = bid.price.0 as usize;
+
+            if idx >= self.bids.len() {
+                self.bids.resize(idx + 1, zero);
             }
-            self.bids
-                .entry(Reverse(bid.price))
-                .insert_entry(bid.quantity);
-        });
 
-        depth_update.asks.iter().for_each(|ask| {
-            if ask.quantity == Quantity::default() {
-                self.asks.remove_entry(&ask.price);
-                return;
+            self.bids[idx] = bid.quantity;
+
+            if bid.quantity != zero {
+                if idx > self.best_bid {
+                    self.best_bid = idx;
+                }
+            } else if idx == self.best_bid {
+                while self.best_bid > 0 && self.bids[self.best_bid] == zero {
+                    self.best_bid -= 1;
+                }
             }
-            self.asks.entry(ask.price).insert_entry(ask.quantity);
-        });
-    }
-
-    pub fn display_top_levels(&self, top_levels: usize) -> String {
-        let mut output: String = "bids:\n~~~\n".into();
-
-        for best_bid in self.bids.iter().take(top_levels) {
-            output += &format!("{}: {}\n", best_bid.0.0, best_bid.1);
         }
 
-        output += "\nasks:\n~~~\n";
-        for best_ask in self.asks.iter().take(top_levels) {
-            output += &format!("{}: {}\n", best_ask.0, best_ask.1);
-        }
-        output += "\n\n";
+        // ASKS
+        for ask in &depth_update.asks {
+            let idx = ask.price.0 as usize;
 
-        output
+            if idx >= self.asks.len() {
+                self.asks.resize(idx + 1, zero);
+            }
+
+            self.asks[idx] = ask.quantity;
+
+            if ask.quantity != zero {
+                if idx < self.best_ask || self.best_ask == 0 {
+                    self.best_ask = idx;
+                }
+            } else if idx == self.best_ask {
+                while self.best_ask < self.asks.len() && self.asks[self.best_ask] == zero {
+                    self.best_ask += 1;
+                }
+            }
+        }
     }
+    // pub fn display_top_levels(&self, top_levels: usize) -> String {
+    //     let mut output: String = "bids:\n~~~\n".into();
+    //
+    //     for best_bid in self.bids.iter().take(top_levels) {
+    //         output += &format!("{}: {}\n", best_bid.0.0, best_bid.1);
+    //     }
+    //
+    //     output += "\nasks:\n~~~\n";
+    //     for best_ask in self.asks.iter().take(top_levels) {
+    //         output += &format!("{}: {}\n", best_ask.0, best_ask.1);
+    //     }
+    //     output += "\n\n";
+    //
+    //     output
+    // }
 }
 
-impl From<Snapshot> for Orderbook {
-    fn from(value: Snapshot) -> Self {
-        let bids = BTreeMap::from_iter(
-            value
-                .bids
-                .iter()
-                .map(|price_level| (Reverse(price_level.price), price_level.quantity)),
-        );
-        let asks = BTreeMap::from_iter(
-            value
-                .asks
-                .iter()
-                .map(|price_level| (price_level.price, price_level.quantity)),
-        );
-
-        Self {
-            bids,
-            asks,
-            update_id: value.update_id,
-        }
-    }
-}
+// impl From<Snapshot> for Orderbook {
+//     fn from(value: Snapshot) -> Self {
+//         let bids = BTreeMap::from_iter(
+//             value
+//                 .bids
+//                 .iter()
+//                 .map(|price_level| (Reverse(price_level.price), price_level.quantity)),
+//         );
+//         let asks = BTreeMap::from_iter(
+//             value
+//                 .asks
+//                 .iter()
+//                 .map(|price_level| (price_level.price, price_level.quantity)),
+//         );
+//
+//         Self {
+//             bids,
+//             asks,
+//             update_id: value.update_id,
+//         }
+//     }
+// }

@@ -12,7 +12,7 @@ mod snapshot;
 mod types;
 
 const N_UPDATES: usize = 1_000_000;
-const RUNS: usize = 5;
+const RUNS: usize = 100;
 
 fn random_depth_update(prev_final_update_id: UpdateID, symbol: &Symbol) -> DepthUpdate {
     let mut rng = rand::rng();
