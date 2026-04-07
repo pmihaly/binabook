@@ -25,6 +25,7 @@
           jq
           openssl
           pkg-config
+          perf
         ];
 
         treefmtEval = treefmt-nix.lib.evalModule pkgs (
