@@ -18,13 +18,23 @@ fn price_to_index(price: PriceTicks) -> usize {
     price as usize
 }
 
-#[derive(Debug, Default)]
+const TICKS: usize = 1_000_000;
+
+#[derive(Debug)]
 pub struct Orderbook {
     update_id: UpdateID,
-    bids: Vec<Quantity>,
-    best_bid: usize,
-    asks: Vec<Quantity>,
-    best_ask: usize,
+    bids: [Quantity; TICKS],
+    asks: [Quantity; TICKS],
+}
+
+impl Default for Orderbook {
+    fn default() -> Self {
+        Orderbook {
+            update_id: UpdateID::default(),
+            bids: [Quantity(0.0); TICKS],
+            asks: [Quantity(0.0); TICKS],
+        }
+    }
 }
 
 impl Orderbook {
@@ -35,49 +45,59 @@ impl Orderbook {
 
         self.update_id = depth_update.final_update_id;
 
-        let zero = Quantity::default();
-
-        // BIDS
         for bid in &depth_update.bids {
             let idx = bid.price.0 as usize;
 
-            if idx >= self.bids.len() {
-                self.bids.resize(idx + 1, zero);
-            }
-
             self.bids[idx] = bid.quantity;
-
-            if bid.quantity != zero {
-                if idx > self.best_bid {
-                    self.best_bid = idx;
-                }
-            } else if idx == self.best_bid {
-                while self.best_bid > 0 && self.bids[self.best_bid] == zero {
-                    self.best_bid -= 1;
-                }
-            }
         }
 
-        // ASKS
         for ask in &depth_update.asks {
             let idx = ask.price.0 as usize;
 
-            if idx >= self.asks.len() {
-                self.asks.resize(idx + 1, zero);
-            }
-
             self.asks[idx] = ask.quantity;
-
-            if ask.quantity != zero {
-                if idx < self.best_ask || self.best_ask == 0 {
-                    self.best_ask = idx;
-                }
-            } else if idx == self.best_ask {
-                while self.best_ask < self.asks.len() && self.asks[self.best_ask] == zero {
-                    self.best_ask += 1;
-                }
-            }
         }
+
+        // // BIDS
+        // for bid in &depth_update.bids {
+        //     let idx = bid.price.0 as usize;
+        //
+        //     if idx >= self.bids.len() {
+        //         self.bids.resize(idx + 1, zero);
+        //     }
+        //
+        //     self.bids[idx] = bid.quantity;
+        //
+        //     if bid.quantity != zero {
+        //         if idx > self.best_bid {
+        //             self.best_bid = idx;
+        //         }
+        //     } else if idx == self.best_bid {
+        //         while self.best_bid > 0 && self.bids[self.best_bid] == zero {
+        //             self.best_bid -= 1;
+        //         }
+        //     }
+        // }
+        //
+        // // ASKS
+        // for ask in &depth_update.asks {
+        //     let idx = ask.price.0 as usize;
+        //
+        //     if idx >= self.asks.len() {
+        //         self.asks.resize(idx + 1, zero);
+        //     }
+        //
+        //     self.asks[idx] = ask.quantity;
+        //
+        //     if ask.quantity != zero {
+        //         if idx < self.best_ask || self.best_ask == 0 {
+        //             self.best_ask = idx;
+        //         }
+        //     } else if idx == self.best_ask {
+        //         while self.best_ask < self.asks.len() && self.asks[self.best_ask] == zero {
+        //             self.best_ask += 1;
+        //         }
+        //     }
+        // }
     }
     // pub fn display_top_levels(&self, top_levels: usize) -> String {
     //     let mut output: String = "bids:\n~~~\n".into();

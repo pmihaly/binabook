@@ -21,7 +21,12 @@ fn random_depth_update(prev_final_update_id: UpdateID, symbol: &Symbol) -> Depth
     let first = prev + 1;
     let final_id = first + rng.random_range(0..3);
 
-    let mid_price: f32 = rng.random_range(20_000.0..70_000.0);
+    // Pick a mid price anywhere in the 60k–70k range
+    let mid_price: f32 = rng.random_range(60_000.0..70_000.0);
+
+    // Define min and max prices to be within 10k of mid_price
+    let min_price = mid_price - 5_000.0;
+    let max_price = mid_price + 5_000.0;
 
     let bid_levels = rng.random_range(1..5);
     let ask_levels = rng.random_range(1..5);
@@ -30,7 +35,8 @@ fn random_depth_update(prev_final_update_id: UpdateID, symbol: &Symbol) -> Depth
     let mut asks = Vec::with_capacity(ask_levels);
 
     for i in 0..bid_levels {
-        let price = mid_price - (i as f32 + 1.0) * rng.random_range(0.1..5.0);
+        // Price offset from mid price
+        let price = (mid_price - (i as f32 + 1.0) * rng.random_range(0.1..5.0)).max(min_price); // ensure >= min_price
         let qty = if rng.random_bool(0.1) {
             0.0
         } else {
@@ -44,7 +50,7 @@ fn random_depth_update(prev_final_update_id: UpdateID, symbol: &Symbol) -> Depth
     }
 
     for i in 0..ask_levels {
-        let price = mid_price + (i as f32 + 1.0) * rng.random_range(0.1..5.0);
+        let price = (mid_price + (i as f32 + 1.0) * rng.random_range(0.1..5.0)).min(max_price); // ensure <= max_price
         let qty = if rng.random_bool(0.1) {
             0.0
         } else {
@@ -66,7 +72,6 @@ fn random_depth_update(prev_final_update_id: UpdateID, symbol: &Symbol) -> Depth
         asks,
     }
 }
-
 fn main() {
     println!("generating {N_UPDATES} random updates...");
 
