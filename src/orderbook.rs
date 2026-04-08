@@ -1,5 +1,3 @@
-use std::{cmp::Reverse, collections::BTreeMap};
-
 use crate::{
     depth_update::DepthUpdate,
     snapshot::Snapshot,
@@ -12,32 +10,39 @@ pub enum OrderbookEvent {
     DepthUpdate(DepthUpdate),
 }
 
-type PriceTicks = u32;
-
-fn price_to_index(price: PriceTicks) -> usize {
-    price as usize
-}
-
-const TICKS: usize = 1_000_000;
+const TICKS: usize = 100_000;
+const BITS: usize = (TICKS / 64) + 1;
 
 #[derive(Debug)]
 pub struct Orderbook {
     update_id: UpdateID,
     bids: [Quantity; TICKS],
     asks: [Quantity; TICKS],
+    bid_bitset: [u64; BITS],
+    ask_bitset: [u64; BITS],
 }
 
 impl Default for Orderbook {
     fn default() -> Self {
         Orderbook {
             update_id: UpdateID::default(),
-            bids: [Quantity(0.0); TICKS],
-            asks: [Quantity(0.0); TICKS],
+            bids: [Quantity(0); TICKS],
+            asks: [Quantity(0); TICKS],
+            bid_bitset: [0; BITS],
+            ask_bitset: [0; BITS],
         }
     }
 }
 
 impl Orderbook {
+    fn set_bit(bitset: &mut [u64; BITS], price: Price) {
+        bitset[(price.0 >> 6) as usize] |= 1 << (price.0 & 63);
+    }
+
+    fn clear_bit(bitset: &mut [u64; BITS], price: Price) {
+        bitset[(price.0 >> 6) as usize] &= !(1 << (price.0 & 63));
+    }
+
     pub fn apply_depth_update(&mut self, depth_update: &DepthUpdate) {
         if depth_update.final_update_id <= self.update_id {
             return;
@@ -46,74 +51,27 @@ impl Orderbook {
         self.update_id = depth_update.final_update_id;
 
         for bid in &depth_update.bids {
-            let idx = bid.price.0 as usize;
+            self.bids[bid.price.0 as usize] = bid.quantity;
 
-            self.bids[idx] = bid.quantity;
+            match bid.quantity.0.cmp(&0) {
+                std::cmp::Ordering::Less | std::cmp::Ordering::Equal => {
+                    Self::clear_bit(&mut self.bid_bitset, bid.price)
+                }
+                std::cmp::Ordering::Greater => Self::set_bit(&mut self.bid_bitset, bid.price),
+            }
         }
 
         for ask in &depth_update.asks {
-            let idx = ask.price.0 as usize;
+            self.asks[ask.price.0 as usize] = ask.quantity;
 
-            self.asks[idx] = ask.quantity;
+            match ask.quantity.0.cmp(&0) {
+                std::cmp::Ordering::Less | std::cmp::Ordering::Equal => {
+                    Self::clear_bit(&mut self.ask_bitset, ask.price)
+                }
+                std::cmp::Ordering::Greater => Self::set_bit(&mut self.ask_bitset, ask.price),
+            }
         }
-
-        // // BIDS
-        // for bid in &depth_update.bids {
-        //     let idx = bid.price.0 as usize;
-        //
-        //     if idx >= self.bids.len() {
-        //         self.bids.resize(idx + 1, zero);
-        //     }
-        //
-        //     self.bids[idx] = bid.quantity;
-        //
-        //     if bid.quantity != zero {
-        //         if idx > self.best_bid {
-        //             self.best_bid = idx;
-        //         }
-        //     } else if idx == self.best_bid {
-        //         while self.best_bid > 0 && self.bids[self.best_bid] == zero {
-        //             self.best_bid -= 1;
-        //         }
-        //     }
-        // }
-        //
-        // // ASKS
-        // for ask in &depth_update.asks {
-        //     let idx = ask.price.0 as usize;
-        //
-        //     if idx >= self.asks.len() {
-        //         self.asks.resize(idx + 1, zero);
-        //     }
-        //
-        //     self.asks[idx] = ask.quantity;
-        //
-        //     if ask.quantity != zero {
-        //         if idx < self.best_ask || self.best_ask == 0 {
-        //             self.best_ask = idx;
-        //         }
-        //     } else if idx == self.best_ask {
-        //         while self.best_ask < self.asks.len() && self.asks[self.best_ask] == zero {
-        //             self.best_ask += 1;
-        //         }
-        //     }
-        // }
     }
-    // pub fn display_top_levels(&self, top_levels: usize) -> String {
-    //     let mut output: String = "bids:\n~~~\n".into();
-    //
-    //     for best_bid in self.bids.iter().take(top_levels) {
-    //         output += &format!("{}: {}\n", best_bid.0.0, best_bid.1);
-    //     }
-    //
-    //     output += "\nasks:\n~~~\n";
-    //     for best_ask in self.asks.iter().take(top_levels) {
-    //         output += &format!("{}: {}\n", best_ask.0, best_ask.1);
-    //     }
-    //     output += "\n\n";
-    //
-    //     output
-    // }
 }
 
 // impl From<Snapshot> for Orderbook {

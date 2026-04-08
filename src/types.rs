@@ -13,8 +13,8 @@ where
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Symbol(pub String);
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, PartialOrd, Clone, Copy)]
-pub struct Price(#[serde(deserialize_with = "from_str_to_f32")] pub f32);
+#[derive(Serialize, Deserialize, Debug, PartialEq, PartialOrd, Clone, Copy, Eq, Ord)]
+pub struct Price(pub u32);
 
 impl Display for Price {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -22,18 +22,8 @@ impl Display for Price {
     }
 }
 
-impl Eq for Price {}
-
-impl Ord for Price {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.0.total_cmp(&other.0)
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy, Default)]
-pub struct Quantity(#[serde(deserialize_with = "from_str_to_f32")] pub f32);
-
-impl Eq for Quantity {}
+#[derive(Serialize, Deserialize, Debug, PartialEq, PartialOrd, Clone, Copy, Default)]
+pub struct Quantity(pub u32);
 
 impl Display for Quantity {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
