@@ -26,6 +26,7 @@
           openssl
           pkg-config
           perf
+          valgrind
         ];
 
         treefmtEval = treefmt-nix.lib.evalModule pkgs (
