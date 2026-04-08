@@ -21,12 +21,10 @@ fn random_depth_update(prev_final_update_id: UpdateID, symbol: &Symbol) -> Depth
     let first = prev + 1;
     let final_id = first + rng.random_range(0..3);
 
-    // Pick a mid price anywhere in the 60k–70k range
-    let mid_price: u32 = rng.random_range(60_000..70_000);
+    let mid_price: u32 = 60_000;
 
-    // Define min and max prices to be within 10k of mid_price
-    let min_price = mid_price - 5_000;
-    let max_price = mid_price + 5_000;
+    let min_price = mid_price - 20_000;
+    let max_price = mid_price + 20_000;
 
     let bid_levels = rng.random_range(1..5);
     let ask_levels = rng.random_range(1..5);

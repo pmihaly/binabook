@@ -10,8 +10,11 @@ pub enum OrderbookEvent {
     DepthUpdate(DepthUpdate),
 }
 
-const TICKS: usize = 100_000;
-const BITS: usize = (TICKS / 64) + 1;
+const MID_PRICE: usize = 60_000;
+const TICKS_PER_SIDE: usize = 20_000;
+const MIN_PRICE: usize = MID_PRICE - TICKS_PER_SIDE;
+const TICKS: usize = TICKS_PER_SIDE * 2;
+const BITS: usize = (TICKS + 63) / 64;
 
 #[derive(Debug)]
 pub struct Orderbook {
@@ -35,12 +38,12 @@ impl Default for Orderbook {
 }
 
 impl Orderbook {
-    fn set_bit(bitset: &mut [u64; BITS], price: Price) {
-        bitset[(price.0 >> 6) as usize] |= 1 << (price.0 & 63);
+    fn set_bit(bitset: &mut [u64; BITS], index: usize) {
+        bitset[index >> 6] |= 1 << (index & 63);
     }
 
-    fn clear_bit(bitset: &mut [u64; BITS], price: Price) {
-        bitset[(price.0 >> 6) as usize] &= !(1 << (price.0 & 63));
+    fn clear_bit(bitset: &mut [u64; BITS], index: usize) {
+        bitset[index >> 6] &= !(1 << (index & 63));
     }
 
     pub fn apply_depth_update(&mut self, depth_update: &DepthUpdate) {
@@ -51,24 +54,27 @@ impl Orderbook {
         self.update_id = depth_update.final_update_id;
 
         for bid in &depth_update.bids {
-            self.bids[bid.price.0 as usize] = bid.quantity;
+            let index = bid.price.0 as usize - MIN_PRICE;
+            let prev = self.bids[index];
 
-            match bid.quantity.0.cmp(&0) {
-                std::cmp::Ordering::Less | std::cmp::Ordering::Equal => {
-                    Self::clear_bit(&mut self.bid_bitset, bid.price)
-                }
-                std::cmp::Ordering::Greater => Self::set_bit(&mut self.bid_bitset, bid.price),
+            self.bids[index] = bid.quantity;
+
+            match (prev.0, bid.quantity.0) {
+                (0, 0) => continue,
+                (_, 0) => Self::clear_bit(&mut self.bid_bitset, index),
+                (_, _) => Self::set_bit(&mut self.bid_bitset, index),
             }
         }
 
         for ask in &depth_update.asks {
-            self.asks[ask.price.0 as usize] = ask.quantity;
+            let index = ask.price.0 as usize - MIN_PRICE;
+            let prev = self.asks[index];
+            self.asks[index] = ask.quantity;
 
-            match ask.quantity.0.cmp(&0) {
-                std::cmp::Ordering::Less | std::cmp::Ordering::Equal => {
-                    Self::clear_bit(&mut self.ask_bitset, ask.price)
-                }
-                std::cmp::Ordering::Greater => Self::set_bit(&mut self.ask_bitset, ask.price),
+            match (prev.0, ask.quantity.0) {
+                (0, 0) => continue,
+                (_, 0) => Self::clear_bit(&mut self.ask_bitset, index),
+                (_, _) => Self::set_bit(&mut self.ask_bitset, index),
             }
         }
     }
