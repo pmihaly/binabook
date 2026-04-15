@@ -31,7 +31,7 @@ impl Ord for Price {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy, Default)]
-pub struct Quantity(#[serde(deserialize_with = "from_str_to_f32")] f32);
+pub struct Quantity(#[serde(deserialize_with = "from_str_to_f32")] pub f32);
 
 impl Eq for Quantity {}
 

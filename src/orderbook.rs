@@ -37,14 +37,14 @@ impl Orderbook {
         for bid in depth_update.bids {
             let key = Reverse(bid.price);
             match bid.quantity {
-                Quantity(0) => self.bids.remove(&key),
+                Quantity(0.0) => self.bids.remove(&key),
                 qty => self.bids.insert(key, qty),
             };
         }
 
         for ask in depth_update.asks {
             match ask.quantity {
-                Quantity(0) => self.asks.remove(&ask.price),
+                Quantity(0.0) => self.asks.remove(&ask.price),
                 qty => self.asks.insert(ask.price, qty),
             };
         }
