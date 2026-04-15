@@ -18,11 +18,13 @@
       system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-        deps = with pkgs; [
+        devDeps = with pkgs; [
           cargo
           rustc
           websocat
           jq
+        ];
+        buildDeps = with pkgs; [
           openssl
           pkg-config
         ];
@@ -38,7 +40,14 @@
       in
       {
 
-        packages.default = throw "no default package";
+        packages.default = pkgs.rustPlatform.buildRustPackage rec {
+          pname = "binabook";
+          version = "0.0.1";
+          cargoLock.lockFile = ./Cargo.lock;
+          nativeBuildInputs = buildDeps;
+          src = pkgs.lib.cleanSource ./.;
+          PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig";
+        };
 
         checks = {
           pre-commit-check = pre-commit-hooks.lib.${system}.run {
@@ -53,7 +62,7 @@
 
         devShell = nixpkgs.legacyPackages.${system}.mkShell {
           inherit (self.checks.${system}.pre-commit-check) shellHook;
-          buildInputs = deps;
+          buildInputs = devDeps ++ buildDeps;
           PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig";
         };
 
