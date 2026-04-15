@@ -9,13 +9,12 @@ mod depth_update;
 mod orderbook;
 mod snapshot;
 mod types;
-use std::error::Error;
 
 const SNAPSHOT_URL: &str = "https://fapi.binance.com/fapi/v1/depth?symbol=BTCUSDT&limit=1000";
 const DEPTH_URL: &str = "wss://fstream.binance.com/public/ws/btcusdt@depth@100ms";
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() -> anyhow::Result<()> {
     let (ws, _) = connect_async(DEPTH_URL).await.expect("Failed to connect");
 
     let (_, mut read) = ws.split();
