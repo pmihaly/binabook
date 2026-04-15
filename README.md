@@ -2,6 +2,7 @@
 
 
 snapshot:  https://fapi.binance.com/fapi/v1/depth?symbol=BTCUSDT&limit=1000
+
 depth deltas: wss://fstream.binance.com/public/ws/btcusdt@depth@100ms
 
 # TODO
@@ -24,6 +25,15 @@ depth deltas: wss://fstream.binance.com/public/ws/btcusdt@depth@100ms
 - [ ] auto reconnect
 - [ ] implement refetching snapshot on missed event
 - [x] "lockless" orderbook (funnel depth update and snapshot into same channel)
+- [ ] use uint64 for price, quantity and updateid
+- [ ] replace btreemap with bitset
+    - preallocated array where each item represents a pricelevel
+    - array of bitsets to find the best bid/ask price
+    - bitset array length is pricelevels / 64, each item is uint64
+    - find best price: iterate through array
+        - if item is 0, continue
+        - use leading_zeros() to find the count of leading/trailing zeros in the number
+        - index of number in array + count of leading zeros in numer = index of best pricelevel
 
 # Extra todos
 
